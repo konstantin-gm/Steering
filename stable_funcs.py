@@ -6,7 +6,9 @@ Created on Sun Apr 16 22:42:11 2023
 """
 import numpy
 
+
 def allan_deviation(z, dt, tau):
+    
     ADEV = numpy.zeros(tau.size, dtype='double')
     n = z.size
     maxi = 0
@@ -19,7 +21,9 @@ def allan_deviation(z, dt, tau):
             break
     return tau[:maxi].astype(numpy.double)*dt, ADEV[:maxi]
 
+
 def parabolic_deviation(z, dt, tau):
+    
     ADEV = numpy.zeros(tau.size, dtype='double')
     n = z.size
     maxi = 0
@@ -38,3 +42,15 @@ def parabolic_deviation(z, dt, tau):
         else:
             break    
     return tau[:maxi].astype(numpy.double)*dt, ADEV[:maxi]
+
+
+def generate_tau(n_decades):    
+   
+    tau = numpy.arange(1, 10)
+    dec = 10
+    for i in range(1, n_decades):
+        tau = numpy.append(tau, numpy.arange(dec, dec*10, dec))
+        dec *= 10
+    tau = numpy.append(tau, dec)
+    
+    return tau
