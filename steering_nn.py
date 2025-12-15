@@ -195,7 +195,7 @@ class SteeringSimulator:
             history["control_applied"].append(u_prev)
 
             if step % self.ctrl_interval == 0:
-                cmd = controller(dX[0]*1e9, dX[1]*1e11, z)*1e-13
+                cmd = controller(dX[0]*1e8, dX[1]*1e13, torch.abs(innov)*1e3)*1e-12
             else:
                 cmd = torch.tensor(0.0, dtype=self.dtype, device=self.device)
 
@@ -208,11 +208,11 @@ class SteeringSimulator:
 def train_controller(
     controller,
     simulator,
-    num_epochs=150,
+    num_epochs=50,
     steps_per_epoch=200,
-    phase_weight=1,
-    freq_weight=1000,
-    control_weight=1e9,
+    phase_weight=1e-3,
+    freq_weight=1,
+    control_weight=1e10,
 ):
     optimizer = optim.Adam(controller.parameters(), lr=1e-3)
 
@@ -222,7 +222,7 @@ def train_controller(
         phase_loss = (result["phase_diff_true"] ** 2).mean()
         freq_loss = (result["freq_diff_true"] ** 2).mean()
         control_loss = (result["control_commands"] ** 2).mean()
-        loss = phase_weight * phase_loss + freq_weight * freq_loss + control_weight * control_loss*1e10
+        loss = phase_weight * phase_loss + freq_weight * freq_loss + control_weight * control_loss
         loss.backward()
         optimizer.step()
 
@@ -243,7 +243,7 @@ def main():
     q2 = 2.3e-34
     free_noise = (np.sqrt(9e-26), np.sqrt(q1), np.sqrt(q2))
 
-    dt = 10000
+    dt = 3600
     ctrl_interval = 1
     drift = 5e-16 / 86400
 
@@ -261,7 +261,7 @@ def main():
     train_controller(controller, simulator)
 
     print("Running evaluation...")
-    steps = 40000
+    steps = 10000
     jump_step = None #steps // 2
     phase_jump = 0 #5e-10
     with torch.no_grad():
@@ -304,9 +304,9 @@ def main():
     tau = np.append(tau, np.arange(100000, 1000000, 100000))
     tau = np.append(tau, np.arange(1000000, 10000000, 1000000))
 
-    taus, adev_lock = allan_deviation(x[10000:], dt, tau)
-    _, adev_free = allan_deviation(free[10000:], dt, tau)
-    _, adev_ref = allan_deviation(ref[10000:], dt, tau)
+    taus, adev_lock = allan_deviation(x[1000:], dt, tau)
+    _, adev_free = allan_deviation(free[1000:], dt, tau)
+    _, adev_ref = allan_deviation(ref[1000:], dt, tau)
 
     plt.figure(3)
     plt.loglog(taus, adev_free, label="Свободный")
@@ -316,9 +316,9 @@ def main():
     plt.ylabel("ADEV")
     plt.legend()
 
-    taus_p, pdev_lock = parabolic_deviation(x[10000:], dt, tau)
-    _, pdev_free = parabolic_deviation(free[10000:], dt, tau)
-    _, pdev_ref = parabolic_deviation(ref[10000:], dt, tau)
+    taus_p, pdev_lock = parabolic_deviation(x[1000:], dt, tau)
+    _, pdev_free = parabolic_deviation(free[1000:], dt, tau)
+    _, pdev_ref = parabolic_deviation(ref[1000:], dt, tau)
 
     plt.figure(4)
     plt.loglog(taus_p, pdev_free, label="Свободный")
